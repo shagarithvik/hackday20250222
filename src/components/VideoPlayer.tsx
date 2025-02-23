@@ -22,6 +22,12 @@ const LANGUAGES = [
   { code: 'zh', name: 'Chinese' },
 ];
 
+const SAMPLE_TRANSCRIPT = `Hello and welcome to this video!
+Today we're going to discuss some interesting topics.
+First, let's talk about artificial intelligence and its impact on our daily lives.
+Then, we'll explore how technology is shaping the future of education.
+Finally, we'll look at some practical applications of these technologies.`;
+
 function VideoPlayer({ url, darkMode }: VideoPlayerProps) {
   const [selectedLanguage, setSelectedLanguage] = useState('en');
   const [isTranslating, setIsTranslating] = useState(false);
@@ -43,8 +49,16 @@ function VideoPlayer({ url, darkMode }: VideoPlayerProps) {
       // Set the language
       utterance.lang = selectedLanguage;
       
-      // Get available voices
-      const voices = window.speechSynthesis.getVoices();
+      // Get available voices and wait for them to load
+      let voices = window.speechSynthesis.getVoices();
+      if (voices.length === 0) {
+        await new Promise<void>(resolve => {
+          window.speechSynthesis.onvoiceschanged = () => {
+            voices = window.speechSynthesis.getVoices();
+            resolve();
+          };
+        });
+      }
       
       // Find a voice for the selected language
       const voice = voices.find(v => v.lang.startsWith(selectedLanguage)) || voices[0];
@@ -100,9 +114,11 @@ function VideoPlayer({ url, darkMode }: VideoPlayerProps) {
       const model = genAI.getGenerativeModel({ model: "gemini-pro" });
 
       // Create a prompt for translation
-      const prompt = `Please watch this YouTube video: ${url} and provide a transcript. Then translate the transcript to ${
+      const prompt = `Translate the following text to ${
         LANGUAGES.find(lang => lang.code === selectedLanguage)?.name
-      }. The translation should be natural and fluent while maintaining the original meaning and context.`;
+      }. Maintain the original formatting and line breaks. Here's the text to translate:
+
+${SAMPLE_TRANSCRIPT}`;
 
       // Generate content
       const result = await model.generateContent(prompt);
